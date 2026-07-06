@@ -255,7 +255,10 @@ const CORPUS=[
 "Ende gut, alles gut, sagt man bei uns.",
 ];
 const $=s=>document.querySelector(s);
-$('#total').textContent=CORPUS.length;
+// Kyrillische Saetze zaehlen nicht (fuer das deutsche Stimm-Training irrelevant)
+const SKIP=new Set(CORPUS.map((t,i)=>/[а-яА-ЯёЁ]/.test(t)?i:-1).filter(i=>i>=0));
+const TOTAL=CORPUS.length-SKIP.size;
+$('#total').textContent=TOTAL;
 let idx=0, doneSet=new Set(), mediaRec=null, chunks=[], blob=null, stream=null;
 let toastT;
 function toast(m,err){const t=$('#toast');t.textContent=m;t.classList.toggle('err',!!err);t.classList.add('show');
@@ -263,9 +266,11 @@ function toast(m,err){const t=$('#toast');t.textContent=m;t.classList.toggle('er
 function setState(t,glow){$('#state').innerHTML=glow?`<b>${t}</b>`:t;}
 function render(){
   $('#sentence').textContent=CORPUS[idx];
-  $('#done').textContent=doneSet.size;
-  $('#pfill').style.width=(100*doneSet.size/CORPUS.length)+'%';
-  $('#mins').textContent='~'+Math.round(doneSet.size*10/60)+' Min Audio';
+  const doneDe=[...doneSet].filter(i=>!SKIP.has(Number(i))).length;
+  $('#done').textContent=doneDe;
+  $('#pfill').style.width=(100*doneDe/TOTAL)+'%';
+  $('#mins').textContent='~'+Math.round(doneDe*10/60)+' Min Audio';
+  if(doneDe>=TOTAL){setState('✓ ALLE '+TOTAL+' DEUTSCHEN SÄTZE AUFGENOMMEN — FERTIG! Dataset bereit fürs Training.',1);return;}
   const done=doneSet.has(String(idx));
   setState(done?'✓ SCHON AUFGENOMMEN — NOCHMAL ODER WEITER':'BEREIT · SATZ '+(idx+1));
   blob=null;$('#saveBtn').disabled=true;$('#player').style.display='none';
@@ -283,10 +288,9 @@ function gotoNextOpen(from){
   const start=(from??idx)+1;
   for(let k=0;k<CORPUS.length;k++){
     const i=(start+k)%CORPUS.length;
-    if(!doneSet.has(String(i))){idx=i;return;}
+    if(!doneSet.has(String(i))&&!SKIP.has(i)){idx=i;return;}
   }
   idx=Math.min(idx,CORPUS.length-1);
-  setTimeout(()=>setState('✓ ALLE '+CORPUS.length+' SÄTZE AUFGENOMMEN — FERTIG!',1),50);
 }
 $('#recBtn').onclick=async()=>{
   if(mediaRec&&mediaRec.state==='recording'){mediaRec.stop();return;}
