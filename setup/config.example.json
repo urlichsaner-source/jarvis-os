@@ -1,0 +1,33 @@
+{
+  "userName": "Commander",
+  "title": "Jarvis OS · Command Deck",
+  "persona": "Du bist der lokale KI-Kern eines persoenlichen Kommandozentrums (Jarvis OS).",
+  "port": 5677,
+  "vaultPath": "$ROOT/setup/dummy-vault",
+  "workRepos": [],
+  "transcriptsDir": "",
+  "launchdPrefix": "com.jarvis-os.",
+  "ollamaUrl": "http://localhost:11434",
+  "defaultModel": "qwen2.5:7b",
+  "voiceServer": {
+    "url": "http://127.0.0.1:5690",
+    "modelsDir": "~/voice-models",
+    "whisper": "small",
+    "voices": { "de": "de_DE-thorsten-high.onnx", "ru": "ru_RU-irina-medium.onnx" },
+    "personalVoice": "de_DE-personal.onnx",
+    "dataset": "dataset-personal"
+  },
+  "services": [
+    { "name": "Ollama", "url": "http://localhost:11434/", "hint": "lokaler KI-Kern · Port 11434" }
+  ],
+  "telegram": null,
+  "actions": {},
+  "claudeBin": "~/.local/bin/claude",
+  "claudeTasks": {
+    "empfehlungen": {
+      "cwd": "$VAULT",
+      "file": "$VAULT/07-intelligence/empfehlungen/{date}.md",
+      "prompt": "Lies 03-strategy/current-priorities.md, 03-strategy/open-loops.md und 00-inbox/capture.md. Schreibe eine kompakte Tages-Analyse als Markdown: (1) Top-3-Empfehlungen mit Begruendung, (2) Risiken/Blocker, (3) was automatisiert werden koennte. Max 40 Zeilen, deutsch, konkret. Gib NUR das Markdown aus, beginnend mit \"# KI-Tagesanalyse\"."
+    }
+  }
+}

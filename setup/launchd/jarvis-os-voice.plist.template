@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.jarvis-os.voice</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__ROOT__/.venv/bin/python</string>
+    <string>__ROOT__/core/voice-server.py</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>__HOME__/jarvis-os-voice.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/jarvis-os-voice.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>VOICE_MODELS_DIR</key><string>__HOME__/voice-models</string>
+  </dict>
+</dict>
+</plist>

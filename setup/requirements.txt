@@ -1,0 +1,7 @@
+faster-whisper>=1.0
+piper-tts>=1.2
+requests
+sounddevice
+numpy
+pynput
+pyperclip

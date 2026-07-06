@@ -1,0 +1,15 @@
+# ── PERSONAL LAYER: darf NIEMALS ins oeffentliche Repo ──
+personal/
+
+# Laufzeit & Umgebung
+.venv/
+node_modules/
+*.log
+.env
+.DS_Store
+
+# Analytics-Cache
+.cache/
+
+# Dummy-Memory (entsteht im Beispiel-Modus)
+setup/dummy-memory/

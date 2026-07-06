@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jarvis OS · Stimm-Studio</title>
+<link href="https://api.fontshare.com/v2/css?f[]=technor@400,600,700&f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#020608;--neo:#23F7C6;--neo-soft:rgba(35,247,198,.55);--neo-line:rgba(35,247,198,.14);
+  --cy:#45CCFF;--am:#FFC24D;--rd:#FF5F57;--ink:#DBFFF5;--dim:#6E9A8E;--faint:#3E5C54;
+  --panel:rgba(4,18,16,.7);--disp:"Technor",sans-serif;--body:"General Sans",system-ui,sans-serif;--mono:"JetBrains Mono",monospace;
+  --ease:cubic-bezier(.32,.72,0,1)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100dvh;
+  display:flex;align-items:center;justify-content:center;padding:18px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(800px 560px at 50% 30%,rgba(35,247,198,.08),transparent 62%),
+  radial-gradient(rgba(35,247,198,.045) 1px,transparent 1.4px);background-size:auto,26px 26px}
+.studio{position:relative;z-index:1;width:min(760px,100%);background:var(--panel);border:1px solid var(--neo-line);
+  box-shadow:0 0 60px rgba(35,247,198,.06);padding:26px 28px;display:flex;flex-direction:column;gap:18px}
+.studio::before,.studio::after{content:"";position:absolute;width:16px;height:16px;pointer-events:none}
+.studio::before{top:-1px;left:-1px;border-top:2px solid var(--neo);border-left:2px solid var(--neo);filter:drop-shadow(0 0 5px var(--neo-soft))}
+.studio::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--neo);border-right:2px solid var(--neo);filter:drop-shadow(0 0 5px var(--neo-soft))}
+h1{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.08em;text-transform:uppercase}
+h1 em{font-style:normal;color:var(--neo);text-shadow:0 0 16px rgba(35,247,198,.5)}
+.sub{font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+.progress{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.progress b{color:var(--neo)}
+.pbar{flex:1;height:5px;background:rgba(0,0,0,.5);border:1px solid var(--neo-line);position:relative}
+.pbar i{position:absolute;inset:0;right:auto;background:var(--neo);box-shadow:0 0 12px var(--neo-soft);transition:width .5s var(--ease)}
+.sentence{font-size:clamp(20px,3.4vw,29px);line-height:1.45;font-weight:500;min-height:130px;
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:14px 8px;
+  border:1px solid rgba(35,247,198,.1);background:rgba(0,0,0,.35)}
+.controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:9px;padding:12px 22px;
+  font-size:14px;font-weight:500;color:var(--ink);border:1px solid rgba(35,247,198,.3);background:rgba(35,247,198,.05);
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+  transition:all .4s var(--ease)}
+.btn:hover{background:rgba(35,247,198,.14);box-shadow:0 0 22px rgba(35,247,198,.2)}
+.btn:active{transform:scale(.97)}
+.btn.rec-on{border-color:var(--rd);color:#fff;background:rgba(255,95,87,.15);box-shadow:0 0 26px rgba(255,95,87,.35);animation:pulse 1.1s infinite}
+@keyframes pulse{50%{opacity:.6}}
+.btn.ghost{border-color:rgba(35,247,198,.15);color:var(--dim);font-size:12px;padding:9px 15px}
+.btn.ghost:hover{color:var(--ink)}
+.btn[disabled]{opacity:.35;pointer-events:none}
+.hint{font-size:12px;color:var(--dim);line-height:1.7;border:1px solid rgba(35,247,198,.08);padding:12px 15px;background:rgba(35,247,198,.02)}
+.hint b{color:var(--ink);font-weight:500}
+.state{font-family:var(--mono);font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--dim);text-align:center;min-height:14px}
+.state b{color:var(--neo);text-shadow:0 0 12px rgba(35,247,198,.5)}
+audio{width:100%;height:34px;filter:invert(.88) hue-rotate(120deg)}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(2,14,12,.94);
+  border:1px solid rgba(35,247,198,.4);padding:10px 20px;font-size:12px;font-family:var(--mono);opacity:0;
+  pointer-events:none;transition:opacity .4s}
+#toast.show{opacity:1}
+#toast.err{border-color:rgba(255,95,87,.55)}
+</style>
+</head>
+<body>
+<div class="studio">
+  <div>
+    <h1>Stimm-<em>Studio</em></h1>
+    <div class="sub">Trainings-Datensatz für deine eigene Piper-Stimme · 22.050 Hz · LJSpeech</div>
+  </div>
+  <div class="progress"><span><b id="done">0</b>/<span id="total">–</span></span><div class="pbar"><i id="pfill" style="width:0%"></i></div><span id="mins">~0 Min Audio</span></div>
+  <div class="sentence" id="sentence">lade…</div>
+  <div class="state" id="state">BEREIT</div>
+  <div class="controls">
+    <button class="btn ghost" id="prevBtn">‹ Zurück</button>
+    <button class="btn" id="recBtn">● Aufnehmen</button>
+    <button class="btn" id="saveBtn" disabled>Speichern & weiter ›</button>
+    <button class="btn ghost" id="skipBtn">Überspringen ›</button>
+  </div>
+  <audio id="player" controls style="display:none"></audio>
+  <div class="hint">
+    <b>So klingt's nachher am besten:</b> ruhiger Raum, immer gleicher Abstand zum Mikro (~20 cm), <b>normal und natürlich sprechen</b> — nicht vorlesen-förmig, nicht hetzen. Kurze Pause vor und nach dem Satz. Versprochen? Einfach nochmal aufnehmen. Du kannst jederzeit aufhören — der Fortschritt bleibt gespeichert. <b>Ziel: alle Sätze, Minimum ~150.</b>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+/* ~180 Sätze: phonetisch breit + Handwerks-/Business-Vokabular + Zahlen/Fragen/Ausrufe */
+const CORPUS=[
+"Guten Morgen, was steht heute auf dem Plan?",
+"Die Wärmepumpe läuft seit gestern Abend einwandfrei.",
+"Wir montieren morgen die Photovoltaikanlage auf dem Dach in Saarbrücken.",
+"Der Kunde in Saarlouis hat den Auftrag unterschrieben.",
+"Bitte schick mir die Rechnung bis Freitag um zwölf Uhr.",
+"Das Angebot liegt bei achtundzwanzigtausend Euro netto.",
+"Der Heizungsbauer kommt am Dienstag gegen halb neun.",
+"Wie viele offene Baustellen haben wir diese Woche?",
+"Die Förderung der BAFA beträgt bis zu siebzig Prozent.",
+"Der Speicher fasst dreihundert Liter Warmwasser.",
+"Wir brauchen noch drei Meter Kupferrohr und zwei Pressfittinge.",
+"Achtung, die Leitung steht noch unter Druck!",
+"Der Termin wurde auf nächsten Donnerstag verschoben.",
+"Kannst du mir kurz den Zwischenstand durchgeben?",
+"Die Solarmodule liefern heute richtig gute Erträge.",
+"Im Keller müssen wir die alte Ölheizung demontieren.",
+"Das Team ist seit sieben Uhr auf der Baustelle in Duisburg.",
+"Der Wechselrichter zeigt eine Störung an, Fehlercode dreiundzwanzig.",
+"Bitte dokumentiere den Arbeitsschritt mit zwei Fotos.",
+"Die Bohrung durch die Kellerwand dauert etwa eine Stunde.",
+"Morgen früh kommt die Lieferung mit dem Pufferspeicher.",
+"Wie ist der Stand beim Projekt in der Ludwigstraße?",
+"Der Estrich muss noch mindestens zwei Tage trocknen.",
+"Wir haben den hydraulischen Abgleich erfolgreich abgeschlossen.",
+"Die Vorlauftemperatur liegt bei fünfundfünfzig Grad.",
+"Ruf bitte den Elektriker an, er soll die Zuleitung prüfen.",
+"Das Fundament für die Außeneinheit ist fertig gegossen.",
+"Nächste Woche starten wir mit der energetischen Sanierung.",
+"Der Zähler wurde heute vom Netzbetreiber getauscht.",
+"Wir bekommen die Genehmigung voraussichtlich Ende Juli.",
+"Sehr gut gemacht, das Ergebnis kann sich sehen lassen!",
+"Vorsicht, der Boden ist frisch gestrichen.",
+"Die Dachziegel müssen an drei Stellen erneuert werden.",
+"Der Monteur braucht noch das Werkzeug aus dem Transporter.",
+"Um wie viel Uhr beginnt die Besprechung am Montag?",
+"Die Heizkörper werden im Erdgeschoss komplett getauscht.",
+"Bitte trag die Arbeitszeit gleich in die App ein.",
+"Das Kabel verläuft unter der Decke bis zum Verteilerkasten.",
+"Wir kalkulieren mit einer Marge von fünfunddreißig Prozent.",
+"Der Frostwächter springt bei minus fünf Grad an.",
+"Ich übernehme die Abnahme morgen Vormittag selbst.",
+"Die Firma EcoConstruct meldet drei neue Aufträge.",
+"Zwischen Angebot und Auftrag lagen nur zwei Tage.",
+"Der Kompressor macht ein ungewöhnliches Geräusch.",
+"Alle Unterlagen liegen im Ordner auf dem Schreibtisch.",
+"Wie hoch ist der Stromverbrauch im Vergleich zum Vorjahr?",
+"Die Baustelle wird um siebzehn Uhr sauber übergeben.",
+"Denk daran, die Absperrventile zu kennzeichnen.",
+"Das Gerüst bleibt bis Ende der Woche stehen.",
+"Wir planen die Route für morgen am besten heute Abend.",
+"Der Azubi hat die Prüfung mit Bravour bestanden.",
+"Herzlichen Glückwunsch zum erfolgreichen Abschluss!",
+"Die Software zeigt alle Termine übersichtlich im Kalender.",
+"Bitte lade die Fotos direkt in die Kundenakte hoch.",
+"Ein Kubikmeter Wasser wiegt genau eine Tonne.",
+"Die Anfahrt nach Neunkirchen dauert ungefähr vierzig Minuten.",
+"Im August machen wir zwei Wochen Betriebsferien.",
+"Der Notdienst ist am Wochenende durchgehend erreichbar.",
+"Hast du die Schrauben in der richtigen Größe dabei?",
+"Das Manometer zeigt eins Komma acht Bar an.",
+"Die Übergabe an den Hausmeister klappte reibungslos.",
+"Wir sollten das Material rechtzeitig nachbestellen.",
+"Der Winter kommt schneller als man denkt.",
+"Ohne ordentliche Dämmung verliert das Haus viel Energie.",
+"Die Kollegen aus dem zweiten Team springen kurzfristig ein.",
+"Jeder Handgriff sitzt, das Team ist eingespielt.",
+"Die Qualität steht bei uns immer an erster Stelle.",
+"Zufriedene Kunden empfehlen uns gerne weiter.",
+"Das Wetter spielt diese Woche zum Glück mit.",
+"Bei Regen verschieben wir die Dacharbeiten.",
+"Der Bagger kommt punkt acht Uhr auf das Grundstück.",
+"Bitte messen Sie den Wasserdruck an der Entnahmestelle.",
+"Die Übergabestation für die Fernwärme ist installiert.",
+"Drei Viertel der Strecke sind bereits geschafft.",
+"Am einunddreißigsten Dezember ist Jahresabschluss.",
+"Die Steuer wird quartalsweise ans Finanzamt gemeldet.",
+"Unser Büro befindet sich in der zweiten Etage.",
+"Die Lieferzeit beträgt derzeit sechs bis acht Wochen.",
+"Können wir den Termin auf vierzehn Uhr dreißig legen?",
+"Ich bestätige den Eingang der Anzahlung.",
+"Die Garantie gilt fünf Jahre ab Inbetriebnahme.",
+"Wartung und Service übernehmen wir selbstverständlich auch.",
+"Ein jährlicher Check verlängert die Lebensdauer der Anlage.",
+"Die Filter sollten alle sechs Monate gereinigt werden.",
+"Das Kältemittel wird fachgerecht entsorgt.",
+"Umweltschutz ist für uns kein Fremdwort.",
+"Die Energiewende beginnt im eigenen Keller.",
+"Strom vom eigenen Dach macht unabhängig.",
+"Die Einspeisevergütung wurde zum Juli angepasst.",
+"Der Batteriespeicher deckt den Abendverbrauch ab.",
+"Nachts lädt das Elektroauto in der Garage.",
+"Die Wallbox liefert elf Kilowatt Ladeleistung.",
+"Öffnen Sie bitte das Fenster im Badezimmer.",
+"Der Schlüssel liegt beim Nachbarn im Briefkasten.",
+"Wer zuletzt geht, schließt die Baustelle ab.",
+"Sicherheit geht immer vor Geschwindigkeit.",
+"Helm und Sicherheitsschuhe sind Pflicht auf der Baustelle.",
+"Die Unterweisung findet jeden ersten Montag statt.",
+"Fahr vorsichtig, die Straßen sind glatt heute.",
+"Der Transporter muss zur Inspektion in die Werkstatt.",
+"Tank bitte noch, bevor du zurückkommst.",
+"Das Kennzeichen vom neuen Ducato ist beantragt.",
+"Wie war das Wochenende, alles gut bei dir?",
+"Lass uns das in Ruhe beim Kaffee besprechen.",
+"Ich melde mich später noch einmal telefonisch.",
+"Danke für die schnelle Rückmeldung!",
+"Entschuldigung, da ist mir ein Fehler unterlaufen.",
+"Kein Problem, das kriegen wir hin.",
+"Das schaffen wir bis Feierabend locker.",
+"Gute Arbeit, Männer, macht Feierabend!",
+"Bis morgen dann, schönen Abend noch.",
+"Die Zahlen sehen dieses Quartal richtig gut aus.",
+"Der Umsatz ist um zwölf Prozent gestiegen.",
+"Wir stellen zum September zwei neue Monteure ein.",
+"Das Vorstellungsgespräch läuft morgen um zehn.",
+"Die Lohnabrechnungen gehen heute noch raus.",
+"Der Urlaub ist ab dem fünfzehnten genehmigt.",
+"Bitte reich die Krankmeldung bis Mittwoch nach.",
+"Die Schulung zum Kältemittelschein zahlt die Firma.",
+"Wissen weitergeben macht das ganze Team stärker.",
+"Jeder fängt mal klein an, wichtig ist der Wille.",
+"Ehrlichkeit hält am längsten, auch im Geschäft.",
+"Ein Handschlag zählt bei uns noch etwas.",
+"Пожалуйста, проверь давление в системе отопления.",
+"Завтра начинаем монтаж теплового насоса в восемь утра.",
+"Материал уже на складе, можно забирать.",
+"Хорошая работа, ребята, до завтра!",
+"Сфотографируй, пожалуйста, готовую установку для отчёта.",
+"Клиент доволен, объект сдали вовремя.",
+"Der Chef persönlich schaut heute auf der Baustelle vorbei.",
+"Aller Anfang ist schwer, aber Übung macht den Meister.",
+"Wer nicht fragt, bleibt dumm, also frag ruhig nach.",
+"Qualität, Quantität und Pünktlichkeit gehören zusammen.",
+"Zwischen Theorie und Praxis liegt oft ein weiter Weg.",
+"Xaver wechselt Mittwoch die Zündkerzen im Transporter.",
+"Der Yeti ist ein Fabelwesen, die Kälte hier ist echt.",
+"Zwölf Boxkämpfer jagen Viktor quer über den großen Sylter Deich.",
+"Franz jagt im komplett verwahrlosten Taxi quer durch Bayern.",
+"Die süße Hündin läuft über die grüne Wiese am Ufer.",
+"Größere Schäden ließen sich glücklicherweise vermeiden.",
+"Die Ärzte überprüfen jährlich die Gesundheit der Mitarbeiter.",
+"Öl, Ähre, Übermut, das sind schöne deutsche Wörter.",
+"Tschüss, wir sehen uns nächste Woche wieder!",
+"Der Quereinsteiger überzeugte durch Fleiß und Neugier.",
+"Physik und Chemie spielen im Handwerk eine echte Rolle.",
+"Der Rhythmus der Maschine klingt gleichmäßig und ruhig.",
+"Charakter zeigt sich, wenn niemand hinschaut.",
+"Das Yacht-Projekt am Hafen wurde gestern genehmigt.",
+"Journalisten fragten nach dem Geheimnis des Erfolgs.",
+"Genau genommen begann alles mit einer einfachen Idee.",
+"Manchmal ist weniger tatsächlich mehr.",
+"Wer den Pfennig nicht ehrt, ist des Talers nicht wert.",
+"Ein Kilowattpeak entspricht etwa tausend Kilowattstunden im Jahr.",
+"Die Split-Klimaanlage kühlt und heizt gleichermaßen.",
+"Null Komma fünf Prozent Toleranz sind akzeptabel.",
+"Erst wägen, dann wagen, so machen wir das.",
+"Hundertprozentige Sicherheit gibt es nie, aber fast.",
+"Sieben mal acht ist sechsundfünfzig, ganz einfach.",
+"Am neunzehnten März ist die Messe in Frankfurt.",
+"Um Viertel vor sechs klingelt bei mir der Wecker.",
+"Zweitausendsechsundzwanzig wird unser bestes Jahr.",
+"Die Nummer lautet null eins sieben sechs, dann achtzehn, zweiundvierzig.",
+"Bitte überweisen Sie den Betrag auf das angegebene Konto.",
+"Mit freundlichen Grüßen, Ihr Team von der Haustechnik Meyer.",
+"Sehr geehrte Damen und Herren, vielen Dank für Ihre Anfrage.",
+"Wir freuen uns auf die weitere Zusammenarbeit.",
+"Haben Sie noch Fragen zu unserem Angebot?",
+"Gerne erstellen wir Ihnen ein unverbindliches Angebot.",
+"Unser Service endet nicht mit der Inbetriebnahme.",
+"Rufen Sie uns einfach an, wir sind für Sie da.",
+"Was lange währt, wird endlich gut.",
+"Ende gut, alles gut, sagt man bei uns.",
+];
+const $=s=>document.querySelector(s);
+$('#total').textContent=CORPUS.length;
+let idx=0, doneSet=new Set(), mediaRec=null, chunks=[], blob=null, stream=null;
+let toastT;
+function toast(m,err){const t=$('#toast');t.textContent=m;t.classList.toggle('err',!!err);t.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2800);}
+function setState(t,glow){$('#state').innerHTML=glow?`<b>${t}</b>`:t;}
+function render(){
+  $('#sentence').textContent=CORPUS[idx];
+  $('#done').textContent=doneSet.size;
+  $('#pfill').style.width=(100*doneSet.size/CORPUS.length)+'%';
+  $('#mins').textContent='~'+Math.round(doneSet.size*10/60)+' Min Audio';
+  const done=doneSet.has(String(idx));
+  setState(done?'✓ SCHON AUFGENOMMEN — NOCHMAL ODER WEITER':'BEREIT · SATZ '+(idx+1));
+  blob=null;$('#saveBtn').disabled=true;$('#player').style.display='none';
+}
+async function loadStatus(){
+  try{
+    const s=await (await fetch('/api/record/status')).json();
+    doneSet=new Set((s.done||[]).map(n=>String(parseInt(n.replace(/\D/g,''),10))));
+    // beim ersten noch offenen Satz starten
+    idx=0; while(doneSet.has(String(idx))&&idx<CORPUS.length-1)idx++;
+  }catch(e){toast('voice-server nicht erreichbar',true);}
+  render();
+}
+$('#recBtn').onclick=async()=>{
+  if(mediaRec&&mediaRec.state==='recording'){mediaRec.stop();return;}
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});}
+  catch(e){toast('Mikrofon verweigert',true);return;}
+  const mime=['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+  mediaRec=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+  chunks=[];
+  mediaRec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  mediaRec.onstop=()=>{
+    stream.getTracks().forEach(t=>t.stop());
+    $('#recBtn').classList.remove('rec-on');$('#recBtn').textContent='● Nochmal aufnehmen';
+    blob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'});
+    const p=$('#player');p.src=URL.createObjectURL(blob);p.style.display='block';
+    $('#saveBtn').disabled=false;
+    setState('ANHÖREN — DANN SPEICHERN ODER NOCHMAL',1);
+  };
+  mediaRec.start();
+  $('#recBtn').classList.add('rec-on');$('#recBtn').textContent='■ Stopp';
+  setState('AUFNAHME LÄUFT — SATZ SPRECHEN',1);
+};
+$('#saveBtn').onclick=async()=>{
+  if(!blob)return;
+  $('#saveBtn').disabled=true;setState('SPEICHERT…',1);
+  try{
+    const r=await (await fetch('/api/record?id='+idx+'&text='+encodeURIComponent(CORPUS[idx]),{method:'POST',body:blob})).json();
+    if(!r.ok)throw 0;
+    doneSet.add(String(idx));
+    toast('✓ gespeichert ('+doneSet.size+'/'+CORPUS.length+')');
+    if(idx<CORPUS.length-1){idx++; while(doneSet.has(String(idx))&&idx<CORPUS.length-1)idx++;}
+    $('#recBtn').textContent='● Aufnehmen';
+    render();
+  }catch(e){toast('Speichern fehlgeschlagen',true);$('#saveBtn').disabled=false;}
+};
+$('#skipBtn').onclick=()=>{if(idx<CORPUS.length-1)idx++;$('#recBtn').textContent='● Aufnehmen';render();};
+$('#prevBtn').onclick=()=>{if(idx>0)idx--;$('#recBtn').textContent='● Aufnehmen';render();};
+loadStatus();
+</script>
+</body>
+</html>
