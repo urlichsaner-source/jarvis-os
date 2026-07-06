@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CFG } from '../core/config.mjs';
 import { read, searchVault } from './vault.mjs';
+import { toolSchemas, runTool } from './tools.mjs';
 
 const OLLAMA = CFG.ollamaUrl;
 const MEMORY_FILE = path.join(CFG.memoryDir, 'history.jsonl');
@@ -57,29 +58,44 @@ export async function ollamaAsk(req, res) {
     const sources = [...seen.values()];
     send('sources', sources.map((s) => ({ file: s.file, text: s.text })));
     const context = sources.map((s) => `[${s.file}]\n${read(path.join(CFG.vaultPath, s.file)).slice(0, 1100)}`).join('\n\n').slice(0, 6000);
-    // 2) Ollama-Chat-Stream (Persona aus der Config, Sprech-Modus, Verlauf)
-    const system = `${CFG.persona || 'Du bist ein lokaler KI-Assistent.'} Antworte in der Sprache der Frage, kurz und konkret.${voice ? ` Deine Antwort wird LAUT VORGELESEN: sprich natuerlich in kurzen fliessenden Saetzen, keine Listen, keine Aufzaehlungszeichen, kein Markdown, keine Emojis, keine Dateipfade — maximal 4 Saetze, ausser ${CFG.userName} bittet um mehr.` : ''}${context ? `\n\nKontext aus der Wissensbasis:\n---\n${context}\n---` : ''}`;
+    // 2) Ollama-Chat mit WERKZEUGEN (der Kern kann handeln) + Verlauf + Persona
+    const tools = toolSchemas();
+    const heute = new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const system = `${CFG.persona || 'Du bist ein lokaler KI-Assistent.'} Heute ist ${heute}. Antworte in der Sprache der Frage, kurz und konkret.`
+      + (tools.length ? ` Du kannst mit deinen Werkzeugen echte Aktionen ausfuehren (Kalender, Anfragen, Notizen, Push). Nutze sie, wenn die Frage aktuelle Daten braucht oder eine Aktion verlangt. Bei anlegenden/sendenden Aktionen: wenn der Auftrag eindeutig ist, fuehre direkt aus und bestaetige kurz; bei fehlenden Angaben (z.B. Datum) frag nach statt zu raten.` : '')
+      + (voice ? ` Deine Antwort wird LAUT VORGELESEN: sprich natuerlich in kurzen fliessenden Saetzen, keine Listen, keine Aufzaehlungszeichen, kein Markdown, keine Emojis, keine Dateipfade — maximal 4 Saetze, ausser ${CFG.userName} bittet um mehr.` : '')
+      + (context ? `\n\nKontext aus der Wissensbasis:\n---\n${context}\n---` : '');
     const messages = [
       { role: 'system', content: system },
       ...(Array.isArray(history) ? history.slice(-8).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 1500) })) : []),
       { role: 'user', content: question },
     ];
-    const or = await fetch(`${OLLAMA}/api/chat`, { method: 'POST', body: JSON.stringify({ model: model || CFG.defaultModel, messages, stream: true }) });
-    if (!or.ok || !or.body) { send('error', { msg: 'Ollama nicht erreichbar (' + OLLAMA + ')' }); return res.end(); }
-    let buf = '', answer = '';
-    for await (const chunk of or.body) {
-      buf += Buffer.from(chunk).toString('utf8');
-      let nl;
-      while ((nl = buf.indexOf('\n')) !== -1) {
-        const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
-        if (!line.trim()) continue;
-        try {
-          const j = JSON.parse(line);
-          if (j.message?.content) { answer += j.message.content; send('token', { t: j.message.content }); }
-          if (j.done) send('done', { total: j.eval_count });
-        } catch {}
+    let answer = '', evalCount = 0;
+    for (let round = 0; round < 5; round++) {
+      const or = await fetch(`${OLLAMA}/api/chat`, {
+        method: 'POST',
+        body: JSON.stringify({ model: model || CFG.defaultModel, messages, tools: tools.length ? tools : undefined, stream: false }),
+      });
+      if (!or.ok) { send('error', { msg: 'Ollama nicht erreichbar (' + OLLAMA + ')' }); return res.end(); }
+      const j = await or.json();
+      evalCount += j.eval_count || 0;
+      const msg = j.message || {};
+      if (msg.tool_calls?.length) {
+        messages.push(msg);
+        for (const tc of msg.tool_calls.slice(0, 4)) {
+          const name = tc.function?.name;
+          send('tool', { name, args: tc.function?.arguments });
+          const result = await runTool(name, tc.function?.arguments);
+          send('tool_done', { name, ok: !result?.error });
+          messages.push({ role: 'tool', content: JSON.stringify(result).slice(0, 5000) });
+        }
+        continue; // naechste Runde: Kern verarbeitet die Werkzeug-Ergebnisse
       }
+      answer = msg.content || '';
+      break;
     }
+    if (answer) send('token', { t: answer });
+    send('done', { total: evalCount });
     if (answer) memoryAppend(question, answer.slice(0, 2000));
   } catch (e) { send('error', { msg: String(e).slice(0, 200) }); }
   res.end();

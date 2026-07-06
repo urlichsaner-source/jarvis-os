@@ -13,12 +13,19 @@
     "url": "http://127.0.0.1:5690",
     "modelsDir": "~/voice-models",
     "whisper": "small",
-    "voices": { "de": "de_DE-thorsten-high.onnx", "ru": "ru_RU-irina-medium.onnx" },
+    "voices": {
+      "de": "de_DE-thorsten-high.onnx",
+      "ru": "ru_RU-irina-medium.onnx"
+    },
     "personalVoice": "de_DE-personal.onnx",
     "dataset": "dataset-personal"
   },
   "services": [
-    { "name": "Ollama", "url": "http://localhost:11434/", "hint": "lokaler KI-Kern · Port 11434" }
+    {
+      "name": "Ollama",
+      "url": "http://localhost:11434/",
+      "hint": "lokaler KI-Kern · Port 11434"
+    }
   ],
   "telegram": null,
   "actions": {},
@@ -29,5 +36,10 @@
       "file": "$VAULT/07-intelligence/empfehlungen/{date}.md",
       "prompt": "Lies 03-strategy/current-priorities.md, 03-strategy/open-loops.md und 00-inbox/capture.md. Schreibe eine kompakte Tages-Analyse als Markdown: (1) Top-3-Empfehlungen mit Begruendung, (2) Risiken/Blocker, (3) was automatisiert werden koennte. Max 40 Zeilen, deutsch, konkret. Gib NUR das Markdown aus, beginnend mit \"# KI-Tagesanalyse\"."
     }
+  },
+  "assistant": {
+    "appApi": null,
+    "googleTokenFile": null,
+    "calendarId": "primary"
   }
 }

@@ -743,6 +743,17 @@ async function ask(qOverride,voiceMode){
             ans.insertBefore(kd,txt.nextSibling?null:cur); term.scrollTop=9e9;
           }
         }
+        if(ev==='tool'){
+          setState('FÜHRT AUS…'); spawnInfall(10);
+          const td=document.createElement('div');
+          td.innerHTML=`<span class="k">▸ FÜHRT AUS: <b>${esc(d.name)}</b>${d.args?' '+esc(JSON.stringify(d.args)).slice(0,120):''}</span>`;
+          ans.insertBefore(td,cur); term.scrollTop=9e9;
+        }
+        if(ev==='tool_done'){
+          const td=document.createElement('div');
+          td.innerHTML=`<span class="k">${d.ok?'✓':'⚠'} ${esc(d.name)} ${d.ok?'erledigt':'fehlgeschlagen'}</span>`;
+          ans.insertBefore(td,cur); term.scrollTop=9e9;
+        }
         if(ev==='token'){
           if(coreMode!=='speak')setState('ANTWORTET');
           txt.textContent+=d.t; lastAnswer+=d.t; term.scrollTop=9e9;
