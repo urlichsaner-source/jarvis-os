@@ -274,10 +274,19 @@ async function loadStatus(){
   try{
     const s=await (await fetch('/api/record/status')).json();
     doneSet=new Set((s.done||[]).map(n=>String(parseInt(n.replace(/\D/g,''),10))));
-    // beim ersten noch offenen Satz starten
-    idx=0; while(doneSet.has(String(idx))&&idx<CORPUS.length-1)idx++;
+    gotoNextOpen(-1);
   }catch(e){toast('voice-server nicht erreichbar',true);}
   render();
+}
+function gotoNextOpen(from){
+  // naechster offener Satz AB from+1, mit Wrap-Around — uebersprungene werden wiedergefunden
+  const start=(from??idx)+1;
+  for(let k=0;k<CORPUS.length;k++){
+    const i=(start+k)%CORPUS.length;
+    if(!doneSet.has(String(i))){idx=i;return;}
+  }
+  idx=Math.min(idx,CORPUS.length-1);
+  setTimeout(()=>setState('✓ ALLE '+CORPUS.length+' SÄTZE AUFGENOMMEN — FERTIG!',1),50);
 }
 $('#recBtn').onclick=async()=>{
   if(mediaRec&&mediaRec.state==='recording'){mediaRec.stop();return;}
@@ -307,12 +316,12 @@ $('#saveBtn').onclick=async()=>{
     if(!r.ok)throw 0;
     doneSet.add(String(idx));
     toast('✓ gespeichert ('+doneSet.size+'/'+CORPUS.length+')');
-    if(idx<CORPUS.length-1){idx++; while(doneSet.has(String(idx))&&idx<CORPUS.length-1)idx++;}
+    gotoNextOpen();
     $('#recBtn').textContent='● Aufnehmen';
     render();
   }catch(e){toast('Speichern fehlgeschlagen',true);$('#saveBtn').disabled=false;}
 };
-$('#skipBtn').onclick=()=>{if(idx<CORPUS.length-1)idx++;$('#recBtn').textContent='● Aufnehmen';render();};
+$('#skipBtn').onclick=()=>{gotoNextOpen();$('#recBtn').textContent='● Aufnehmen';render();};
 $('#prevBtn').onclick=()=>{if(idx>0)idx--;$('#recBtn').textContent='● Aufnehmen';render();};
 loadStatus();
 </script>
