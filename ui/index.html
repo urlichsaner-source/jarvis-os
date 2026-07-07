@@ -18,7 +18,7 @@
   --bg:#020608;
   --neo:#23F7C6; --neo-soft:rgba(35,247,198,.55); --neo-dim:rgba(35,247,198,.16); --neo-line:rgba(35,247,198,.14);
   --cy:#45CCFF; --am:#FFC24D; --rd:#FF5F57; --vi:#A184FF;
-  --ink:#DBFFF5; --dim:#6E9A8E; --faint:#3E5C54;
+  --ink:#E6FFF8; --dim:#9FC2B7; --faint:#5E8479;
   --panel:rgba(4,18,16,.62); --panel2:rgba(3,12,11,.78);
   --disp:"Technor","Clash Display",sans-serif; --body:"General Sans",system-ui,sans-serif; --mono:"JetBrains Mono",monospace;
   --ease:cubic-bezier(.32,.72,0,1);
@@ -26,7 +26,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{color-scheme:dark}
 body{
-  background:var(--bg); color:var(--ink); font-family:var(--body); font-size:13.5px;
+  background:var(--bg); color:var(--ink); font-family:var(--body); font-size:14.5px;
   height:100dvh; overflow:hidden; -webkit-font-smoothing:antialiased;
 }
 /* Holo-Atmosphaere */
@@ -40,7 +40,7 @@ body::before{
   background-size:auto,auto,auto,26px 26px;
 }
 body::after{
-  content:""; position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.05; mix-blend-mode:screen;
+  content:""; position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.025; mix-blend-mode:screen;
   background:repeating-linear-gradient(0deg, rgba(35,247,198,.5) 0 1px, transparent 1px 4px);
 }
 .scanbar{position:fixed; left:0; right:0; top:-12%; height:12%; z-index:1; pointer-events:none;
@@ -67,7 +67,7 @@ body::after{
   filter:drop-shadow(0 0 4px var(--neo-soft))}
 .panel::after{bottom:-1px; right:-1px; border-bottom:2px solid var(--neo); border-right:2px solid var(--neo);
   filter:drop-shadow(0 0 4px var(--neo-soft))}
-.lbl{font-family:var(--mono); font-size:8.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--faint);
+.lbl{font-family:var(--mono); font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:var(--faint);
   display:flex; align-items:center; justify-content:space-between; gap:10px; flex-shrink:0}
 .lbl b{color:var(--dim); font-weight:400}
 .lbl::before{content:"▸ "; color:var(--neo)}
@@ -112,7 +112,7 @@ body::after{
 .col-right{grid-area:right}
 .grow{flex:1 1 0; min-height:0}
 .rows{display:flex; flex-direction:column; overflow-y:auto; min-height:0}
-.row{display:flex; gap:10px; align-items:flex-start; padding:8px 2px; border-top:1px solid rgba(35,247,198,.07);
+.row{display:flex; gap:11px; align-items:flex-start; padding:11px 2px; font-size:14.5px; line-height:1.55; border-top:1px solid rgba(35,247,198,.07);
   font-size:12.5px; line-height:1.45; color:var(--ink)}
 .row:first-child{border-top:none}
 .row .idx{font-family:var(--mono); font-size:10px; color:var(--cy); padding-top:2px; min-width:20px; text-shadow:0 0 8px rgba(69,204,255,.5)}
@@ -126,8 +126,11 @@ body::after{
 .rec.error i{background:var(--rd); box-shadow:0 0 10px rgba(255,95,87,.8)}
 .rec.info i{background:var(--cy); box-shadow:0 0 10px rgba(69,204,255,.7)}
 .rec.ok i{background:var(--neo); box-shadow:0 0 10px var(--neo)}
-.ai-md{font-size:11.5px; color:var(--dim); line-height:1.6; background:rgba(0,0,0,.4); border:1px solid rgba(35,247,198,.1);
-  padding:10px 12px; overflow-y:auto; white-space:pre-wrap; min-height:0}
+.ai-md{font-size:13.5px; color:var(--ink); line-height:1.65; background:rgba(0,0,0,.4); border:1px solid rgba(35,247,198,.1);
+  padding:12px 14px; overflow-y:auto; white-space:pre-wrap; min-height:0; cursor:pointer}
+.ai-md .aib{display:flex; gap:10px; padding:7px 0; border-top:1px solid rgba(35,247,198,.07)}
+.ai-md .aib:first-child{border-top:none; padding-top:0}
+.ai-md .aib i{color:var(--cy); font-style:normal; font-family:var(--mono); font-size:11px; padding-top:3px}
 
 /* ── Buehne (Kern) ── */
 .stage{grid-area:stage; position:relative; display:flex; flex-direction:column; min-height:0; min-width:0;
@@ -340,7 +343,7 @@ select.hud{background:rgba(0,0,0,.55); border:1px solid rgba(35,247,198,.2); pad
       <div class="lbl">Prioritäten <b>current-priorities</b></div>
       <div class="rows" id="topList"></div>
     </div>
-    <div class="panel" style="max-height:32%">
+    <div class="panel" style="max-height:32%; display:none">
       <div class="lbl">Älteste Loops</div>
       <div class="rows" id="loopList"></div>
     </div>
@@ -602,13 +605,30 @@ async function load(){
     chip('#chBriefe',s.briefe.open, s.briefe.open>0?'hot':'ok');
     const jobsOk=s.jobs.filter(j=>j.pid||j.lastExit===0||j.lastExit===null).length;
     chip('#chJobs',`${jobsOk}<small style="font-size:10px;color:var(--faint)">/${s.jobs.length}</small>`, jobsOk===s.jobs.length?'ok':'crit');
-    $('#topList').innerHTML=s.top.length?s.top.map((t,i)=>`<div class="row"><span class="idx">${String(i+1).padStart(2,'0')}</span><span>${esc(t)}</span></div>`).join(''):'<div class="row dim">keine offenen Top-Punkte</div>';
+    const top3=s.top.slice(0,3), topRest=s.top.length-top3.length;
+    $('#topList').innerHTML=(top3.length?top3.map((t,i)=>`<div class="row"><span class="idx">${String(i+1).padStart(2,'0')}</span><span>${esc(t)}</span></div>`).join(''):'<div class="row dim">keine offenen Top-Punkte</div>')
+      +(topRest>0?`<div class="row dim" style="font-size:12px">+ ${topRest} weitere in current-priorities</div>`:'');
     $('#recList').innerHTML=s.recommendations.map(r=>`<div class="rec ${r.level}"><i></i><span>${esc(r.text)}</span></div>`).join('');
     $('#loopList').innerHTML=s.loops.oldest.slice(0,4).map(l=>`<div class="row dim"><span>${esc(l.text)}</span><span class="meta">${l.days} T</span></div>`).join('')||'<div class="row dim">keine</div>';
-    if(s.aiRecs){$('#aiRecsWrap').style.display='flex';$('#aiRecsDate').textContent=s.aiRecs.date;$('#aiRecs').textContent=s.aiRecs.text.replace(/^# .*\n/,'');}
+    if(s.aiRecs){
+      $('#aiRecsWrap').style.display='flex';$('#aiRecsDate').textContent=s.aiRecs.date;
+      // Klar-Ansicht: nur die nummerierten Top-Empfehlungen als saubere Bullets, Klick = Volltext
+      const raw=s.aiRecs.text.replace(/^# .*\n/,'');
+      const cutWord=(t,n)=>t.length<=n?t:t.slice(0,n).replace(/\s+\S*$/,'')+' …';
+      const bullets=[...raw.matchAll(/^\s*(\d)\.\s+(.+)$/gm)].map(m=>[m[1],cutWord(m[2].replace(/\*\*/g,'').replace(/\s+/g,' '),170)]);
+      const el=$('#aiRecs');
+      if(bullets.length&&!el.dataset.full){
+        el.innerHTML=bullets.slice(0,3).map(([n,t])=>`<div class="aib"><i>${n}</i><span>${esc(t)}</span></div>`).join('')
+          +'<div class="aib" style="color:var(--faint);font-size:11.5px">tippen für die volle Analyse</div>';
+        el.onclick=()=>{el.dataset.full='1';el.textContent=raw;el.style.whiteSpace='pre-wrap';};
+      } else if(!bullets.length){ el.textContent=raw; }
+    }
     const stCls=j=>j.pid?'run':(j.lastExit===0||j.lastExit===null)?'ok':'err';
-    $('#jobstrip').innerHTML='<span class="cap">Automationen</span>'+s.jobs.map(j=>
-      `<span class="jchip" data-ovl="autom"><i class="${stCls(j)}"></i>${esc(j.label)}<small>${esc(j.schedule)}</small></span>`).join('');
+    // Klar-Ansicht: eine Zusammenfassung statt 13 Chips — nur Problemfaelle einzeln
+    const jobsBad=s.jobs.filter(j=>!j.pid&&j.lastExit!==0&&j.lastExit!==null);
+    $('#jobstrip').innerHTML='<span class="cap">Automationen</span>'
+      +`<span class="jchip" data-ovl="autom"><i class="${jobsBad.length?'err':'ok'}"></i>${s.jobs.length-jobsBad.length}/${s.jobs.length} laufen fehlerfrei<small>tippen für Details</small></span>`
+      +jobsBad.map(j=>`<span class="jchip" data-ovl="autom"><i class="err"></i>${esc(j.label)}<small>Exit ${j.lastExit}</small></span>`).join('');
     $('#jobsFull').innerHTML=s.jobs.map(j=>`
       <div class="jobfull">
         <div class="top">
