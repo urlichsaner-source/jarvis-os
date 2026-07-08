@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CFG } from '../core/config.mjs';
 import { read, searchVault } from './vault.mjs';
+import { ragSearch } from './rag.mjs';
 import { toolSchemas, runTool } from './tools.mjs';
 
 const OLLAMA = CFG.ollamaUrl;
@@ -41,23 +42,35 @@ export async function ollamaAsk(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   const send = (ev, data) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
   try {
-    // 1) Wissenszugriff: markante Woerter der Frage im Vault suchen (GROSSBUCHSTABEN-Begriffe zuerst)
+    // 1) Wissenszugriff — hybrid: semantisch (RAG-Embeddings) zuerst, Stichwort-grep ergaenzt.
+    //    Faellt der RAG-Index/das Embedding-Modell aus, traegt grep allein (wie frueher).
+    let ragHits = [];
+    try { ragHits = await ragSearch(question, 6); } catch {}
     const words = [...new Set(question.replace(/[^\wäöüÄÖÜß-]/g, ' ').split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w.toLowerCase())))]
       .sort((a, b) => {
         const score = (w) => (w === w.toUpperCase() && /[A-ZÄÖÜ]/.test(w) ? 100 : 0) + (/^[A-ZÄÖÜ]/.test(w) ? 10 : 0) + w.length;
         return score(b) - score(a);
       }).slice(0, 4);
     const seen = new Map();
+    for (const h of ragHits) if (!seen.has(h.file)) seen.set(h.file, { file: h.file, text: h.text.slice(0, 160) });
     for (const w of words) {
+      if (seen.size >= 8) break;
       for (const h of await searchVault(w)) {
         if (!seen.has(h.file)) seen.set(h.file, h);
-        if (seen.size >= 6) break;
+        if (seen.size >= 8) break;
       }
-      if (seen.size >= 6) break;
     }
-    const sources = [...seen.values()];
+    const sources = [...seen.values()].slice(0, 8);
     send('sources', sources.map((s) => ({ file: s.file, text: s.text })));
-    const context = sources.map((s) => `[${s.file}]\n${read(path.join(CFG.vaultPath, s.file)).slice(0, 1100)}`).join('\n\n').slice(0, 6000);
+    // Kontext: RAG liefert die TREFFENDEN Abschnitte, grep-only-Dateien den Dateianfang
+    const ragFiles = new Set(ragHits.map((h) => h.file));
+    const parts = ragHits.map((h) => `[${h.file}${h.heading ? ' › ' + h.heading : ''}]\n${h.text}`);
+    for (const s of sources) {
+      if (ragFiles.has(s.file)) continue;
+      parts.push(`[${s.file}]\n${read(path.join(CFG.vaultPath, s.file)).slice(0, 900)}`);
+      if (parts.length >= 8) break;
+    }
+    const context = parts.join('\n\n').slice(0, 7000);
     // 2) Ollama-Chat mit WERKZEUGEN (der Kern kann handeln) + Verlauf + Persona
     const tools = toolSchemas();
     const heute = new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
