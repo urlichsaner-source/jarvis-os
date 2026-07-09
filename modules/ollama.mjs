@@ -29,7 +29,10 @@ export async function ollamaModels() {
       fetch(`${OLLAMA}/api/ps`, { signal: c.signal }).then((r) => r.json()).catch(() => ({ models: [] })),
     ]);
     clearTimeout(t);
-    return { ok: true, models: (tags.models || []).map((m) => ({ name: m.name, size: Math.round(m.size / 1e9 * 10) / 10 })), running: (ps.models || []).map((m) => m.name) };
+    // Embedding-Modelle (nomic, bge, minilm ...) koennen nicht chatten -> nicht ins Dropdown
+    const chatModels = (tags.models || []).filter((m) => !/embed|bge|minilm/i.test(m.name));
+    chatModels.sort((a, b) => (a.name === CFG.defaultModel ? -1 : b.name === CFG.defaultModel ? 1 : 0));
+    return { ok: true, models: chatModels.map((m) => ({ name: m.name, size: Math.round(m.size / 1e9 * 10) / 10 })), running: (ps.models || []).map((m) => m.name) };
   } catch { return { ok: false, models: [], running: [] }; }
 }
 
