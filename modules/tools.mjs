@@ -63,6 +63,44 @@ async function calendarInsert({ titel, datum, uhrzeit, dauer_minuten, ort }) {
 }
 
 // ---------- Werkzeug-Definitionen (Ollama-Tools-Schema) ----------
+// ---------- Web-Zugriff (bei Bedarf): DuckDuckGo-Suche + Seiten-Lesen, 0 €, kein Key ----------
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126.0 Safari/537.36';
+const stripTags = (h) => h
+  .replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  .replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;|&apos;/g, "'")
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+async function webSearch(a) {
+  const q = String(a?.frage || a?.query || '').slice(0, 200);
+  if (q.length < 2) return { error: 'Suchbegriff fehlt' };
+  const r = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q), {
+    headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) return { error: `Suche fehlgeschlagen (HTTP ${r.status})` };
+  const html = await r.text();
+  const results = [];
+  for (const m of html.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?(?:class="result__snippet"[^>]*>([\s\S]*?)<\/a>)?/g)) {
+    let url = m[1];
+    const uddg = url.match(/uddg=([^&]+)/);
+    if (uddg) url = decodeURIComponent(uddg[1]);
+    if (!/^https?:/.test(url) || /duckduckgo\.com/.test(url)) continue;  // Werbe-/interne Links raus
+    results.push({ titel: stripTags(m[2]).slice(0, 120), url, auszug: stripTags(m[3] || '').slice(0, 240) });
+    if (results.length >= 5) break;
+  }
+  return results.length ? { ergebnisse: results } : { error: 'Keine Treffer' };
+}
+
+async function webRead(a) {
+  const url = String(a?.url || '');
+  if (!/^https?:\/\//.test(url)) return { error: 'Ungueltige URL' };
+  const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'de-DE,de' }, signal: AbortSignal.timeout(15000), redirect: 'follow' });
+  if (!r.ok) return { error: `HTTP ${r.status}` };
+  const type = r.headers.get('content-type') || '';
+  if (!type.includes('html') && !type.includes('text')) return { error: 'Kein Text-Inhalt (' + type.split(';')[0] + ')' };
+  const text = stripTags(await r.text());
+  return { url, text: text.slice(0, 4000) };
+}
+
 const defs = [
   { name: 'tagesplan_heute', description: 'Liest das heutige Briefing: Top-Prioritaeten, Termine, offene Punkte. Nutze dies fuer Fragen wie "Was steht heute an?"', params: {}, run: () => appGet('/app/heute'), needs: 'app' },
   { name: 'termine', description: 'Listet Kalender-Termine. range: "heute", "woche" oder "monat".', params: { range: { type: 'string', description: 'heute | woche | monat' } }, run: (a) => appGet(`/app/termine?range=${encodeURIComponent(a?.range || 'woche')}`), needs: 'app' },
@@ -73,6 +111,8 @@ const defs = [
   { name: 'termin_anlegen', description: 'Legt einen Termin im Google-Kalender an. Vorher beim Nutzer bestaetigen, wenn Datum/Zeit nicht eindeutig genannt wurden.', params: { titel: { type: 'string' }, datum: { type: 'string', description: 'YYYY-MM-DD' }, uhrzeit: { type: 'string', description: 'HH:MM (24h)' }, dauer_minuten: { type: 'number', description: 'Standard 60' }, ort: { type: 'string' } }, run: calendarInsert, needs: 'google' },
   { name: 'inbox_merken', description: 'Speichert eine Notiz/Idee in der Inbox des Nutzers.', params: { text: { type: 'string' } }, run: (a) => actions.capture({ text: a?.text }), needs: null },
   { name: 'telegram_push', description: 'Schickt dem Nutzer eine Nachricht aufs Handy (Telegram).', params: { nachricht: { type: 'string' } }, run: (a) => actions.push({ message: a?.nachricht }), needs: 'telegram' },
+  { name: 'web_suche', description: 'Sucht im Internet (DuckDuckGo). NUR nutzen, wenn die Frage aktuelle oder externe Infos braucht, die nicht in der Wissensbasis stehen (z. B. aktuelle Preise, Nachrichten, Oeffnungszeiten, Gesetzesaenderungen). Liefert Titel, URL und Auszug der Top-Treffer.', params: { frage: { type: 'string', description: 'Suchanfrage' } }, run: webSearch, needs: null },
+  { name: 'webseite_lesen', description: 'Laedt eine Webseite und liefert ihren Textinhalt (max. 4000 Zeichen). Nutze dies nach web_suche, um einen Treffer im Detail zu lesen.', params: { url: { type: 'string', description: 'Vollstaendige URL (https://...)' } }, run: webRead, needs: null },
 ];
 
 function available() {
