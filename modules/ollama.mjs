@@ -73,7 +73,7 @@ export async function ollamaAsk(req, res) {
       parts.push(`[${s.file}]\n${read(path.join(CFG.vaultPath, s.file)).slice(0, 900)}`);
       if (parts.length >= 8) break;
     }
-    const context = parts.join('\n\n').slice(0, 7000);
+    const context = parts.join('\n\n').slice(0, 5200);
     // 2) Ollama-Chat mit WERKZEUGEN (der Kern kann handeln) + Verlauf + Persona
     const tools = toolSchemas();
     const heute = new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -83,14 +83,14 @@ export async function ollamaAsk(req, res) {
       + (context ? `\n\nKontext aus der Wissensbasis:\n---\n${context}\n---` : '');
     const messages = [
       { role: 'system', content: system },
-      ...(Array.isArray(history) ? history.slice(-8).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 1500) })) : []),
+      ...(Array.isArray(history) ? history.slice(-6).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 1500) })) : []),
       { role: 'user', content: question },
     ];
     let answer = '', evalCount = 0;
     for (let round = 0; round < 5; round++) {
       const or = await fetch(`${OLLAMA}/api/chat`, {
         method: 'POST',
-        body: JSON.stringify({ model: model || CFG.defaultModel, messages, tools: tools.length ? tools : undefined, stream: false }),
+        body: JSON.stringify({ model: model || CFG.defaultModel, messages, tools: tools.length ? tools : undefined, stream: false, keep_alive: '30m' }),
       });
       if (!or.ok) { send('error', { msg: 'Ollama nicht erreichbar (' + OLLAMA + ')' }); return res.end(); }
       const j = await or.json();
